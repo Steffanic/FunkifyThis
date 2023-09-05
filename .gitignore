@@ -1,0 +1,5 @@
+HFAudioPipeline.ipynb
+.vscode/settings.json
+model_saves/
+plots/
+__pycache__/
