@@ -3,3 +3,5 @@ HFAudioPipeline.ipynb
 model_saves/
 plots/
 __pycache__/
+*.log
+audio_pipeline_env/
