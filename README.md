@@ -1,6 +1,10 @@
 # FunkifyThis
 
-### Inspired by visual neural style transfer, I thought I would take a stab at aural style transfer! 
+### Inspired by visual neural style transfer, I thought I would take a stab at aural style transfer! Here's the nightmare fuel it makes so far attempting to style a hip hop track as classical:
+
+
+https://github.com/Steffanic/FunkifyThis/assets/38746732/5b5f85a7-56fd-40a0-9181-74cbe209f821
+
 
 ## The Plan:
 ---------------
