@@ -5,3 +5,13 @@ plots/
 __pycache__/
 *.log
 audio_pipeline_env/
+runs/
+logs/
+AudioStyleTransfer/
+GTZAN
+*.wav
+*.png
+models.py 
+infrastructure.py 
+baseline.py 
+frequencyOnlyModel.py 

@@ -1,0 +1,1 @@
+from GenreStyleTransfer.models.BaselineCNN import BaselineGenreClassifier
