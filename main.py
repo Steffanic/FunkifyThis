@@ -1,7 +1,6 @@
 import argparse
 import librosa
 import tensorflow as tf
-import torch
 from torchinfo import summary
 from GenreStyleTransfer.data import AudioFolder, get_gtzan_audio_dataloader, load_audio_file
 from GenreStyleTransfer.models import BaselineGenreClassifier
@@ -26,12 +25,13 @@ def get_model(model, version=None):
         raise ValueError(f"Model {model} not recognized. Please choose from baseline.")
 
 NUM_EPOCHS = 10
-LEARNING_RATE = 0.0001
-BATCH_SIZE = 8
+LEARNING_RATE = 0.001
+BATCH_SIZE = 32
 LEARNING_RATE_GAMMA = 0.99
 
+genre_from_class_id = {0: 'blues', 1: 'classical', 2: 'country', 3: 'disco', 4: 'hiphop', 5: 'jazz', 6: 'metal', 7: 'pop', 8: 'reggae', 9: 'rock'}
+
 if __name__=="__main__":
-    torch.autograd.set_detect_anomaly(True)
     # handle arguments
     parser = argparse.ArgumentParser(description='Train a model to classify genres. Then use the model to stylize a song.')
     parser.add_argument('--train', action='store_true', help='train the model', default=False)
@@ -43,11 +43,11 @@ if __name__=="__main__":
     parser.add_argument('--version', type=int, help='the version of the model to use')
     args = parser.parse_args()
 
-    # get the dataloader
-    train_gtzan_dataloader, val_gtzan_dataloader, genre_from_class_id = get_gtzan_audio_dataloader(audio_folder_root="D:\GTZAN\Data\genres_original", batch_size=BATCH_SIZE, shuffle=True, convert_to_mel=True)
-
+    # Maybe make a hyperparameter dictionary here for searching
 
     if args.train:
+        # get the dataloader
+        train_gtzan_dataloader, val_gtzan_dataloader, genre_from_class_id = get_gtzan_audio_dataloader(audio_folder_root="D:\GTZAN\Data\genres_original", batch_size=BATCH_SIZE, shuffle=True, convert_to_mel=True)
 
         # create the models for the genre classification task
         if args.version is not None:
@@ -87,7 +87,7 @@ if __name__=="__main__":
             with tf.summary.create_file_writer('logs/').as_default():
                 tf.summary.scalar('final_val_accuracy', histories[type(model).__name__]['val_accuracy'][-1], step=1)
         # plot the histories
-        plot_histories(histories, [type(model).__name__ for model in models], plot_save_path='plots/'+args.model+".png")
+        plot_histories(histories, [type(model).__name__ for model in models], title_string=f"{NUM_EPOCHS=}, {LEARNING_RATE=}, {LEARNING_RATE_GAMMA=}, {BATCH_SIZE=}", plot_save_path='plots/'+args.model+".png")
 
         # save the models
         for model in models:
@@ -109,7 +109,7 @@ if __name__=="__main__":
         style_loss_histories = {}
         stylized_mel_spectrogram = {}
         for model in models:
-            stylized_mel_spectrogram[type(model).__name__], style_loss_histories[type(model).__name__] = train_to_stylize_song(model, content_mel_spectrogram, style_mel_spectrogram, style_level=args.style_level, genre_from_class_idx=genre_from_class_id, num_epochs=100, learning_rate=100, learning_rate_gamma=0.99, model_save_path='model_saves/styleTransfers/')
+            stylized_mel_spectrogram[type(model).__name__], style_loss_histories[type(model).__name__] = train_to_stylize_song(model, content_mel_spectrogram, style_mel_spectrogram, style_level=args.style_level, genre_from_class_idx=genre_from_class_id, num_epochs=10, learning_rate=0.1, learning_rate_gamma=0.99, model_save_path='model_saves/styleTransfers/')
                 
             # convert the mel spectrogram to audio
             stylized_ft = librosa.feature.inverse.mel_to_stft(stylized_mel_spectrogram[type(model).__name__].detach().numpy(), sr=sample_rate)
@@ -118,6 +118,6 @@ if __name__=="__main__":
             wavfile.write(f'stylized_{type(model).__name__}.wav', sample_rate, stylized_audio.T)
 
         # plot the style loss histories
-        plot_histories(style_loss_histories, [type(model).__name__ for model in models], plot_save_path='plots/styleTransfers/')
+        plot_histories(style_loss_histories, [type(model).__name__ for model in models], title_string=f"{args.style_level=}, {NUM_EPOCHS=}, {LEARNING_RATE=}, {LEARNING_RATE_GAMMA=}, {BATCH_SIZE=}", plot_save_path='plots/styleTransfers/')
 
 

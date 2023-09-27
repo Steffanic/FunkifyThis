@@ -2,7 +2,7 @@ from torch.nn import ModuleList, Conv2d, LazyLinear, Softmax, Module, ReLU, Flat
 from torch import save as tsave, load as tload
 
 class BaselineGenreClassifier(Module):
-    def __init__(self, num_conv_layers=3, num_conv_filters=16, kernel_size=(5,1), stride=(2, 2), num_dense_layers=2, num_dense_units=64, num_classes=10):
+    def __init__(self, num_conv_layers=5, num_conv_filters=16, kernel_size=(5,11), stride=(2, 2), num_dense_layers=2, num_dense_units=64, num_classes=10):
         super().__init__()
         ''' Implements a very basic CNN with no pooling(because pooling implies local translational invariance and that isn't the case in a mel spectrogram)'''
         self.version = 0

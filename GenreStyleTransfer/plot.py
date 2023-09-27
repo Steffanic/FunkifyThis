@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-def plot_histories(histories, model_names, plot_save_path=None):
+def plot_histories(histories, model_names, title_string, plot_save_path=None):
     """
     Plots the loss and accuracy history for every model.
     
@@ -20,21 +20,23 @@ def plot_histories(histories, model_names, plot_save_path=None):
                 plt.subplot(1,num_subplots,2)
                 plt.plot(histories[model_name][history_name], label=f'{model_name} {history_name}')
                 plt.ylabel('Accuracy')
-            elif history_name=='grad_mag':
-                plt.subplot(1,num_subplots,3)
-                # grad_magnitudes is an epoch list containing lists corresponding to each parameters average gradient
-                # the inner list is a list of tuples where the first element is the parameter name and the second element is the gradient magnitude
-                grad_mags = [[grad_mag for _, grad_mag in epoch] for epoch in histories[model_name][history_name]]
-                names = [[name for name, _ in epoch] for epoch in histories[model_name][history_name]]
-                line_widths = [10/_ for _ in range(1,len(grad_mags)+1, -1)]
-                alpha = [1/_ for _ in range(1,len(grad_mags)+1, -1)]
-                for i, grad_mag in enumerate(grad_mags):
-                    plt.plot(grad_mag, alpha = alpha[i], label=names[i], linewidth=line_widths[i])
-
-                plt.ylabel('Gradient magnitude')
+#             elif history_name=='grad_mag':
+#                 plt.subplot(1,num_subplots,3)
+#                 # grad_magnitudes is an epoch list containing lists corresponding to each parameters average gradient
+#                 # the inner list is a list of tuples where the first element is the parameter name and the second element is the gradient magnitude
+#                 grad_mags = [[grad_mag for _, grad_mag in epoch] for epoch in histories[model_name][history_name]]
+#                 names = [[name for name, _ in epoch] for epoch in histories[model_name][history_name]]
+#                 line_widths = [10/_ for _ in range(1,len(grad_mags)+1, -1)]
+#                 alpha = [1/_ for _ in range(1,len(grad_mags)+1, -1)]
+#                 for i, grad_mag in enumerate(grad_mags):
+#                     plt.plot(grad_mag, alpha = alpha[i], label=names[i], linewidth=line_widths[i])
+# 
+#                 plt.ylabel('Gradient magnitude')
     plt.legend()
     plt.xlabel('Epoch*Batch')
+    plt.suptitle(title_string)
     plt.tight_layout()
+
 
     if plot_save_path is not None:
         plt.savefig(plot_save_path)
@@ -73,3 +75,4 @@ def plot_grad_magnitudes(grad_magnitudes, model_names, plot_save_path=None):
     if plot_save_path is not None:
         plt.savefig(plot_save_path)
     plt.show()
+

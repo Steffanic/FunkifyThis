@@ -1,3 +1,4 @@
+from collections import defaultdict
 from copy import copy
 from torch.nn import CrossEntropyLoss, Parameter
 from torch.optim import Adam, lr_scheduler
@@ -31,6 +32,7 @@ def train_to_classify_genres(model, train_gtzan_dataloader, val_gtzan_dataloader
     val_loss_history = []
     val_accuracy_history = []
     grad_magnitudes = []
+    grad_mag_tensor = defaultdict(list)
 
     # initialize file for tqdm progress bar
     progress_file = open(f"progress_{type(model).__name__}.log", "w")
@@ -60,7 +62,8 @@ def train_to_classify_genres(model, train_gtzan_dataloader, val_gtzan_dataloader
             grad_magnitudes.append([(name, tmean(param.grad.abs()).item()) for name, param in model.named_parameters()]) # compute the gradient magnitudes and save them
             with train_writer.as_default():
                 for name, param in model.named_parameters():
-                    tf.summary.histogram(f"grads/grad_magnitude_{name}", tmean(param.grad.abs()), step=epoch*len(train_gtzan_dataloader)+batch_no)
+                    grad_mag_tensor[name].append(tmean(param.grad.abs()).item())
+                    tf.summary.histogram(f"grads/grad_magnitude_{name}",Tensor(grad_mag_tensor[name]), step=epoch*len(train_gtzan_dataloader)+batch_no)
 
             progress_bar.set_description(f"Model: {type(model).__name__} Epoch: {epoch+1}/{num_epochs}, Batch: {batch_no}, Loss: {cross_entropy_loss.mean().item():.4f}, Accuracy: {num_correct.item()/genre.shape[0]:.4f}")
             progress_bar.update()
@@ -96,10 +99,10 @@ def train_to_classify_genres(model, train_gtzan_dataloader, val_gtzan_dataloader
     if model_save_path is not None:
         model.save(model_save_path)
 
-    return {"train_loss":train_loss_history, "train_accuracy":train_accuracy_history, "val_loss":val_loss_history, "val_accuracy":val_accuracy_history, "grad_mag":grad_magnitudes}
+    return {"train_loss":train_loss_history, "train_accuracy":train_accuracy_history, "val_loss":val_loss_history, "val_accuracy":val_accuracy_history}
 
 def train_to_stylize_song(genreClassifier, contentSong, styleSong, style_level, genre_from_class_idx, num_epochs=50, learning_rate=0.001, learning_rate_gamma=0.9, tv_weight = 1, model_save_path=None):
-    x_mel_spectrogram = Parameter(Tensor(contentSong).clone())
+    x_mel_spectrogram = Parameter(tnormal(0, 1, contentSong.shape))
     loss = CrossEntropyLoss()
     style_opt = Adam([x_mel_spectrogram], lr=learning_rate)
 
@@ -114,7 +117,6 @@ def train_to_stylize_song(genreClassifier, contentSong, styleSong, style_level, 
     content_mel_spectrogram = Tensor(contentSong).clone()
     style_mel_spectrogram = Tensor(styleSong).clone()
     #x_mel_spectrogram =  content_mel_spectrogram + normal(0, 1, content_mel_spectrogram.shape)
-    x_mel_spectrogram = x_mel_spectrogram + tnormal(0, 0.5, x_mel_spectrogram.shape)
 
     content_logits = genreClassifier(content_mel_spectrogram.unsqueeze(0))
     content_activations = {}
@@ -131,7 +133,7 @@ def train_to_stylize_song(genreClassifier, contentSong, styleSong, style_level, 
         # add some noise
         
 
-        for style_update_i in range(60):
+        for style_update_i in range(1000):
 
             content_loss = 0
             style_loss = 0
@@ -149,10 +151,11 @@ def train_to_stylize_song(genreClassifier, contentSong, styleSong, style_level, 
             
 
             total_loss = content_loss + style_level*style_loss 
+
             with style_writer.as_default():
-                tf.summary.scalar("loss/content_loss", content_loss.item(), step=style_update_i)
-                tf.summary.scalar("loss/style_loss", style_loss.item(), step=style_update_i)
-                tf.summary.scalar("loss/total_loss", total_loss.item(), step=style_update_i)
+                tf.summary.scalar("loss/content_loss", content_loss.item(), step=style_update_i+(epoch*1000))
+                tf.summary.scalar("loss/style_loss", style_loss.item(), step=style_update_i+(epoch*1000))
+                tf.summary.scalar("loss/total_loss", total_loss.item(), step=style_update_i+(epoch*1000))
 
             content_loss_history.append(content_loss.item())
             style_loss_history.append(style_loss.item())
@@ -172,7 +175,7 @@ def train_to_stylize_song(genreClassifier, contentSong, styleSong, style_level, 
         predicted_genre = targmax(x_softmax_logits, dim=1)
         
 
-        progress_bar.set_description(f"Model: {type(genreClassifier).__name__} Epoch: {epoch+1}/{num_epochs}, Loss: {total_loss.mean().item():.4f} Current Genre: {genre_from_class_idx(predicted_genre)}")
+        progress_bar.set_description(f"Model: {type(genreClassifier).__name__} Epoch: {epoch+1}/{num_epochs}, Loss: {total_loss.mean().item():.4f} Current Genre: {genre_from_class_idx[int(predicted_genre.detach().numpy())]}")
         progress_bar.update()
 
 

@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader, random_split
 import soundfile as sf
 
 
+
 class AudioFolder(DatasetFolder):
     """A dataset class for the GTZAN dataset that returns the audio files"""
     def __init__(self, root, transform=None, target_transform=None, loader=None, convert_to_mel=False):
