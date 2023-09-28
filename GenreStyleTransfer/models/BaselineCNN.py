@@ -11,6 +11,8 @@ class BaselineGenreClassifier(Module):
         self.num_dense_layers = num_dense_layers
         self.num_dense_units = num_dense_units
         self.num_classes = num_classes
+        self.kernel_size = kernel_size
+        self.stride = stride
 
         self.conv_blocks = ModuleList()
         self.dense_blocks = ModuleList()

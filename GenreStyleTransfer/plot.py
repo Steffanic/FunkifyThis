@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-def plot_histories(histories, model_names, title_string, plot_save_path=None):
+def plot_histories(histories, model_name, title_string, plot_save_path=None):
     """
     Plots the loss and accuracy history for every model.
     
@@ -9,29 +9,16 @@ def plot_histories(histories, model_names, title_string, plot_save_path=None):
     model_names: a list of model names to iterate through and plot histories for
     """
     plt.figure(figsize=(20, 10))
-    for model_name in model_names:
-        num_subplots = 3 if 'grad_mag' in histories[model_name].keys() else 2
-        for history_name in histories[model_name].keys():
-            if history_name in ['train_loss', 'val_loss', 'content_loss', 'style_loss', 'total_loss']:
-                plt.subplot(1,num_subplots,1)
-                plt.plot(histories[model_name][history_name], label=f'{model_name} {history_name}')
-                plt.ylabel('Loss')
-            elif history_name in ['train_accuracy', 'val_accuracy']:
-                plt.subplot(1,num_subplots,2)
-                plt.plot(histories[model_name][history_name], label=f'{model_name} {history_name}')
-                plt.ylabel('Accuracy')
-#             elif history_name=='grad_mag':
-#                 plt.subplot(1,num_subplots,3)
-#                 # grad_magnitudes is an epoch list containing lists corresponding to each parameters average gradient
-#                 # the inner list is a list of tuples where the first element is the parameter name and the second element is the gradient magnitude
-#                 grad_mags = [[grad_mag for _, grad_mag in epoch] for epoch in histories[model_name][history_name]]
-#                 names = [[name for name, _ in epoch] for epoch in histories[model_name][history_name]]
-#                 line_widths = [10/_ for _ in range(1,len(grad_mags)+1, -1)]
-#                 alpha = [1/_ for _ in range(1,len(grad_mags)+1, -1)]
-#                 for i, grad_mag in enumerate(grad_mags):
-#                     plt.plot(grad_mag, alpha = alpha[i], label=names[i], linewidth=line_widths[i])
-# 
-#                 plt.ylabel('Gradient magnitude')
+    for history_name in histories[model_name].keys():
+        if history_name in ['train_loss', 'val_loss', 'content_loss', 'style_loss', 'total_loss']:
+            plt.subplot(1,2,1)
+            plt.plot(histories[model_name][history_name], label=f'{model_name} {history_name}')
+            plt.ylabel('Loss')
+        elif history_name in ['train_accuracy', 'val_accuracy']:
+            plt.subplot(1,2,2)
+            plt.plot(histories[model_name][history_name], label=f'{model_name} {history_name}')
+            plt.ylabel('Accuracy')
+
     plt.legend()
     plt.xlabel('Epoch*Batch')
     plt.suptitle(title_string)

@@ -27,6 +27,7 @@ def train_to_classify_genres(model, train_gtzan_dataloader, val_gtzan_dataloader
     opt = Adam(model.parameters(), lr=learning_rate)
     scheduler = lr_scheduler.ExponentialLR(opt, gamma=learning_rate_gamma)
 
+
     train_loss_history = []
     train_accuracy_history = []
     val_loss_history = []

@@ -20,7 +20,7 @@ def get_model(model, version=None):
             model[0].version = version
             return model
         else:
-            return [BaselineGenreClassifier()]
+            return BaselineGenreClassifier()
     else:
         raise ValueError(f"Model {model} not recognized. Please choose from baseline.")
 
@@ -52,25 +52,36 @@ if __name__=="__main__":
         # create the models for the genre classification task
         if args.version is not None:
             # loads a previously trained model
-            models = get_model(args.model, args.version)
+            model = get_model(args.model, args.version)
         else:
-            models = get_model(args.model)
+            model = get_model(args.model)
 
         with tf.summary.create_file_writer('logs/').as_default():
-            for model in models:
-                hp.hparams_config(
-                    hparams=[hp.HParam('learning_rate', hp.RealInterval(0.001, 0.1)),
-                            hp.HParam('learning_rate_gamma', hp.RealInterval(0.9, 0.99)),
-                            hp.HParam('num_epochs', hp.IntInterval(10, 50)),
-                            hp.HParam('batch_size', hp.IntInterval(8,16)),
-                            hp.HParam('model', hp.Discrete(['baseline']))],
-                    metrics=[hp.Metric('final_val_accuracy', display_name='Validation Accuracy')],
-                )
+            hp.hparams_config(
+                hparams=[hp.HParam('learning_rate', hp.RealInterval(0.001, 0.1)),
+                        hp.HParam('learning_rate_gamma', hp.RealInterval(0.9, 0.99)),
+                        hp.HParam('num_epochs', hp.IntInterval(10, 50)),
+                        hp.HParam('batch_size', hp.IntInterval(8,16)),
+                        hp.HParam('time_kernel_size', hp.IntInterval(5, 11)),
+                        hp.HParam('freq_kernel_size', hp.IntInterval(5, 11)),
+                        hp.HParam('time_stride', hp.IntInterval(1, 2)),
+                        hp.HParam('freq_stride', hp.IntInterval(1, 2)),
+                        hp.HParam('num_conv_layers', hp.IntInterval(3, 5)),
+                        hp.HParam('num_fc_layers', hp.IntInterval(1, 3)),
+                        hp.HParam('model', hp.Discrete(['baseline']))],
+                metrics=[hp.Metric('final_val_accuracy', display_name='Validation Accuracy')],
+            )
             hp.hparams(hparams={
                 'learning_rate': LEARNING_RATE,
                 'learning_rate_gamma': LEARNING_RATE_GAMMA,
                 'num_epochs': NUM_EPOCHS,
                 'batch_size': BATCH_SIZE,
+                'time_kernel_size': model.kernel_size[1],
+                'freq_kernel_size': model.kernel_size[0],
+                'time_stride': model.stride[1],
+                'freq_stride': model.stride[0],
+                'num_conv_layers': model.num_conv_layers,
+                'num_fc_layers': model.num_dense_layers,
                 'model': args.model,
             })
         # grab the first batch for a summary
@@ -78,24 +89,21 @@ if __name__=="__main__":
 
         batch_shape = mel_spectrogram.shape
         
-        for model in models:
-            summary(model, input_size=batch_shape)
+        summary(model, input_size=batch_shape)
 
         histories = {}
-        for model in models:
-            histories[type(model).__name__] = train_to_classify_genres(model, train_gtzan_dataloader=train_gtzan_dataloader, val_gtzan_dataloader=val_gtzan_dataloader, num_epochs=NUM_EPOCHS, learning_rate=LEARNING_RATE, learning_rate_gamma=LEARNING_RATE_GAMMA, model_save_path='model_saves/')
-            with tf.summary.create_file_writer('logs/').as_default():
-                tf.summary.scalar('final_val_accuracy', histories[type(model).__name__]['val_accuracy'][-1], step=1)
+        histories[type(model).__name__] = train_to_classify_genres(model, train_gtzan_dataloader=train_gtzan_dataloader, val_gtzan_dataloader=val_gtzan_dataloader, num_epochs=NUM_EPOCHS, learning_rate=LEARNING_RATE, learning_rate_gamma=LEARNING_RATE_GAMMA, model_save_path='model_saves/')
+        with tf.summary.create_file_writer('logs/').as_default():
+            tf.summary.scalar('final_val_accuracy', histories[type(model).__name__]['val_accuracy'][-1], step=1)
         # plot the histories
-        plot_histories(histories, [type(model).__name__ for model in models], title_string=f"{NUM_EPOCHS=}, {LEARNING_RATE=}, {LEARNING_RATE_GAMMA=}, {BATCH_SIZE=}", plot_save_path='plots/'+args.model+".png")
+        plot_histories(histories, type(model).__name__, title_string=f"{NUM_EPOCHS=}, {LEARNING_RATE=}, {LEARNING_RATE_GAMMA=}, {BATCH_SIZE=}", plot_save_path='plots/'+args.model+".png")
 
         # save the models
-        for model in models:
-            model.save('model_saves/')
+        model.save('model_saves/')
 
     if args.stylize:
         # load the models for the genre style transfer task
-        models = get_model(args.model, args.version)
+        model = get_model(args.model, args.version)
 
         # load the content and style songs
         content_audio, sample_rate = load_audio_file(args.content)
@@ -108,16 +116,15 @@ if __name__=="__main__":
         # stylize the song
         style_loss_histories = {}
         stylized_mel_spectrogram = {}
-        for model in models:
-            stylized_mel_spectrogram[type(model).__name__], style_loss_histories[type(model).__name__] = train_to_stylize_song(model, content_mel_spectrogram, style_mel_spectrogram, style_level=args.style_level, genre_from_class_idx=genre_from_class_id, num_epochs=10, learning_rate=0.1, learning_rate_gamma=0.99, model_save_path='model_saves/styleTransfers/')
+        stylized_mel_spectrogram[type(model).__name__], style_loss_histories[type(model).__name__] = train_to_stylize_song(model, content_mel_spectrogram, style_mel_spectrogram, style_level=args.style_level, genre_from_class_idx=genre_from_class_id, num_epochs=10, learning_rate=0.1, learning_rate_gamma=0.99, model_save_path='model_saves/styleTransfers/')
                 
-            # convert the mel spectrogram to audio
-            stylized_ft = librosa.feature.inverse.mel_to_stft(stylized_mel_spectrogram[type(model).__name__].detach().numpy(), sr=sample_rate)
-            stylized_audio = librosa.istft(stylized_ft)
-            # save the audio
-            wavfile.write(f'stylized_{type(model).__name__}.wav', sample_rate, stylized_audio.T)
+        # convert the mel spectrogram to audio
+        stylized_ft = librosa.feature.inverse.mel_to_stft(stylized_mel_spectrogram[type(model).__name__].detach().numpy(), sr=sample_rate)
+        stylized_audio = librosa.istft(stylized_ft)
+        # save the audio
+        wavfile.write(f'stylized_{type(model).__name__}.wav', sample_rate, stylized_audio.T)
 
         # plot the style loss histories
-        plot_histories(style_loss_histories, [type(model).__name__ for model in models], title_string=f"{args.style_level=}, {NUM_EPOCHS=}, {LEARNING_RATE=}, {LEARNING_RATE_GAMMA=}, {BATCH_SIZE=}", plot_save_path='plots/styleTransfers/')
+        plot_histories(style_loss_histories, type(model).__name__ , title_string=f"{args.style_level=}, {NUM_EPOCHS=}, {LEARNING_RATE=}, {LEARNING_RATE_GAMMA=}, {BATCH_SIZE=}", plot_save_path='plots/styleTransfers/')
 
 
